@@ -17,7 +17,7 @@ All codes in this repository are referred to AOSP NDEF implementation.
 ## Usage
 
 ```python
-from ndef import NdefMessage, NdefRecord, NdefTNF, NdefRTD
+from pyndef import NdefMessage, NdefRecord, NdefTNF, NdefRTD
 
 r1 = NdefRecord(NdefTNF.EMPTY, None, None, None)
 print(r1)

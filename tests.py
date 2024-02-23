@@ -1,6 +1,6 @@
 import unittest
 
-from ndef import NdefRecord, NdefMessage, NdefTNF, NdefRTD
+from pyndef import NdefRecord, NdefMessage, NdefTNF, NdefRTD
 
 
 # /cts/tests/tests/ndef/src/android/ndef/cts/NdefTest.java
