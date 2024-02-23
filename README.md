@@ -4,8 +4,8 @@
 [![Pypi](https://img.shields.io/pypi/v/pyndef?color=orange)](https://pypi.org/project/pyndef/)
 
 [![codecov](https://codecov.io/gh/XFY9326/PyNdef/graph/badge.svg?token=QVJNICD0GA)](https://codecov.io/gh/XFY9326/PyNdef)
-[![Test](https://github.com/XFY9326/PyNdef/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/XFY9326/PyNdef/actions/workflows/test.yml)
-[![Release](https://github.com/XFY9326/PyNdef/actions/workflows/release.yml/badge.svg?branch=master)](https://github.com/XFY9326/PyNdef/actions/workflows/release.yml)
+[![Test](https://github.com/XFY9326/PyNdef/actions/workflows/test.yml/badge.svg)](https://github.com/XFY9326/PyNdef/actions/workflows/test.yml)
+[![Release](https://github.com/XFY9326/PyNdef/actions/workflows/release.yml/badge.svg)](https://github.com/XFY9326/PyNdef/actions/workflows/release.yml)
 
 Pure Python library for creating and parsing NDEF messages.  
 All codes in this repository are referred to AOSP NDEF implementation.
@@ -17,7 +17,6 @@ All codes in this repository are referred to AOSP NDEF implementation.
 - With tests
 - Similar to AOSP NDEF implementation
 - Full type hint
-- Single file
 
 ## Usage
 
