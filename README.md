@@ -1,6 +1,6 @@
 # PyNdef
 
-![!python-versions](https://img.shields.io/badge/Python-3.10-blue)
+![!python-versions](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
 [![codecov](https://codecov.io/gh/XFY9326/PyNdef/graph/badge.svg?token=QVJNICD0GA)](https://codecov.io/gh/XFY9326/PyNdef)
 
 Pure Python library for creating and parsing NDEF messages.  
@@ -8,7 +8,7 @@ All codes in this repository are referred to AOSP NDEF implementation.
 
 ## Features
 
-- Pure Python implementation (>=3.10)
+- Pure Python implementation (>=3.6)
 - No 3rd party dependency
 - With tests
 - Similar to AOSP NDEF implementation

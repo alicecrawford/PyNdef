@@ -1,10 +1,10 @@
 import enum
-import struct
+from typing import List, Tuple, Optional, Union
 from urllib.parse import urlparse
 
 
 @enum.unique
-class NdefTNF(enum.IntEnum):
+class NdefTNF(int, enum.Enum):
     EMPTY = 0x00
     WELL_KNOWN = 0x01
     MIME_MEDIA = 0x02
@@ -17,18 +17,21 @@ class NdefTNF(enum.IntEnum):
 
 @enum.unique
 class NdefRTD(bytes, enum.Enum):
-    TEXT = b"\x54"  # "T"
-    URI = b"\x55"  # "U"
-    SMART_POSTER = b"\x53\x70"  # "Sp"
-    ALTERNATIVE_CARRIER = b"\x61\x63"  # "ac"
-    HANDOVER_CARRIER = b"\x48\x63"  # "Hc"
-    HANDOVER_REQUEST = b"\x48\x72"  # "Hr"
-    HANDOVER_SELECT = b"\x48\x73"  # "Hs"
+    TEXT = b"T"
+    URI = b"U"
+    SMART_POSTER = b"Sp"
+    ALTERNATIVE_CARRIER = b"ac"
+    HANDOVER_CARRIER = b"Hc"
+    HANDOVER_REQUEST = b"Hr"
+    HANDOVER_SELECT = b"Hs"
     ANDROID_APP = b"android.com:pkg"
+
+    def __bytes__(self) -> bytes:
+        return self.value
 
 
 # noinspection SpellCheckingInspection
-_URI_PREFIX_MAP: tuple[str, ...] = (
+_URI_PREFIX_MAP: Tuple[str, ...] = (
     "",  # 0x00
     "http://www.",  # 0x01
     "https://www.",  # 0x02
@@ -91,18 +94,15 @@ class NdefRecord:
 
     _MAX_PAYLOAD_SIZE: int = 10 * (1 << 20)
 
-    def __init__(self, tnf: NdefTNF, record_type: NdefRTD | bytes | None, record_id: bytes | None, payload: bytes | None) -> None:
+    def __init__(self, tnf: NdefTNF, record_type: Union[NdefRTD, bytes, None], record_id: Optional[bytes], payload: Optional[bytes]) -> None:
         self.tnf: NdefTNF = tnf
-        if record_type is not None and isinstance(record_type, NdefRTD):
-            self.record_type: bytes = record_type.value
-        else:
-            self.record_type: bytes = bytes(record_type) if record_type is not None else bytes()
+        self.record_type: bytes = bytes(record_type) if record_type is not None else bytes()
         self.record_id: bytes = bytes(record_id) if record_id is not None else bytes()
         self.payload: bytes = bytes(payload) if payload is not None else bytes()
 
         self._validate_tnf(tnf, self.record_type, self.record_id, self.payload)
 
-    def to_known_rtd(self) -> NdefRTD | None:
+    def to_known_rtd(self) -> Optional[NdefRTD]:
         try:
             return NdefRTD(self.record_type)
         except ValueError:
@@ -116,19 +116,19 @@ class NdefRecord:
 
     @staticmethod
     def create_uri(uri: str) -> 'NdefRecord':
-        uri_string = _normalize_uri_scheme(uri.strip().lower())
+        uri_string = _normalize_uri_scheme(uri.strip())
         prefix = 0
         for i, uri_prefix in enumerate(_URI_PREFIX_MAP[1:]):
             if uri_string.startswith(uri_prefix):
                 prefix = i + 1
                 uri_string = uri_string[len(uri_prefix):]
                 break
-        prefix_bytes = (prefix & 0xff).to_bytes(length=1, byteorder="big", signed=False)
+        prefix_bytes = prefix.to_bytes(length=1, byteorder="big", signed=False)
         record = prefix_bytes + uri_string.encode("utf-8")
         return NdefRecord(NdefTNF.WELL_KNOWN, NdefRTD.URI, None, bytes(record))
 
     @staticmethod
-    def create_mime(mime_type: str, mime_data: bytes | None) -> 'NdefRecord':
+    def create_mime(mime_type: str, mime_data: Optional[bytes]) -> 'NdefRecord':
         mime_type = _normalize_mime_type(mime_type)
 
         if len(mime_type) == 0:
@@ -142,7 +142,7 @@ class NdefRecord:
         return NdefRecord(NdefTNF.MIME_MEDIA, mime_type.encode("ascii"), None, mime_data)
 
     @staticmethod
-    def create_external(domain: str, external_type: str, data: bytes | None) -> 'NdefRecord':
+    def create_external(domain: str, external_type: str, data: Optional[bytes]) -> 'NdefRecord':
         domain = domain.strip().lower()
         external_type = external_type.strip().lower()
 
@@ -165,30 +165,31 @@ class NdefRecord:
         if len(language_code_bytes) >= 64:
             raise ValueError("language code is too long, must be <64 bytes.")
 
-        status_bytes = (len(language_code_bytes) & 0xff).to_bytes(length=1, byteorder="big", signed=False)
+        status_bytes = len(language_code_bytes).to_bytes(length=1, byteorder="big", signed=False)
         buffer = status_bytes + language_code_bytes + text_bytes
         return NdefRecord(NdefTNF.WELL_KNOWN, NdefRTD.TEXT, None, buffer)
 
     @staticmethod
-    def parse(buffer: bytes, ignore_mb_me: bool = True) -> tuple['NdefRecord', ...]:
+    def parse(buffer: bytes, ignore_mb_me: bool = True) -> Tuple['NdefRecord', ...]:
         def _ensure_sane_payload_size(size: int) -> None:
             if size > NdefRecord._MAX_PAYLOAD_SIZE:
                 raise ValueError(f"payload above max limit: {size} > {NdefRecord._MAX_PAYLOAD_SIZE}")
 
-        records: list['NdefRecord'] = []
+        records: List['NdefRecord'] = []
 
-        record_type: bytes | None = None
-        record_id: bytes | None = None
+        record_type: Optional[bytes] = None
+        record_id: Optional[bytes] = None
 
-        chunks: list[bytes] = []
+        chunks: List[bytes] = []
         in_chunk: bool = False
-        chunk_tnf: NdefTNF | None = None
+        chunk_tnf: Optional[NdefTNF] = None
         me: bool = False
         offset: int = 0
 
         try:
             while not me:
                 flag = buffer[offset]
+                offset += 1
 
                 mb = flag & NdefRecord._FLAG_MB != 0
                 me = flag & NdefRecord._FLAG_ME != 0
@@ -214,14 +215,19 @@ class NdefRecord:
                 elif not in_chunk and tnf == NdefTNF.UNCHANGED:
                     raise ValueError("unexpected TNF_UNCHANGED in first chunk or not chunked record")
 
-                type_length = buffer[offset := offset + 1] & 0xff
-                if sr:
-                    payload_length = buffer[offset := offset + 1] & 0xff
-                else:
-                    payload_length = struct.unpack_from(">I", buffer, offset + 1)[0]
-                    offset += 4
-                id_length = buffer[offset := offset + 1] if il else 0
+                type_length = buffer[offset]
                 offset += 1
+                if sr:
+                    payload_length = buffer[offset]
+                    offset += 1
+                else:
+                    payload_length = int.from_bytes(buffer[offset:offset + 4], byteorder="big", signed=False)
+                    offset += 4
+                if il:
+                    id_length = buffer[offset]
+                    offset += 1
+                else:
+                    id_length = 0
 
                 if in_chunk and type_length != 0:
                     raise ValueError("expected zero-length type in non-leading chunk")
@@ -279,11 +285,6 @@ class NdefRecord:
 
         return tuple(records)
 
-    @staticmethod
-    def _ensure_sane_payload_size(size: int) -> None:
-        if size > NdefRecord._MAX_PAYLOAD_SIZE:
-            raise ValueError(f"payload above max limit: {size} > {NdefRecord._MAX_PAYLOAD_SIZE}")
-
     @property
     def _flag_sr(self) -> bool:
         return len(self.payload) < 256
@@ -292,28 +293,28 @@ class NdefRecord:
     def _flag_il(self) -> bool:
         return True if self.tnf == NdefTNF.EMPTY else len(self.record_id) > 0
 
-    def to_mime_type(self) -> str | None:
+    def to_mime_type(self) -> Optional[str]:
         if self.tnf == NdefTNF.WELL_KNOWN:
-            if self.record_type == NdefRTD.TEXT.value:
+            if self.record_type == NdefRTD.TEXT:
                 return "text/plain"
         elif self.tnf == NdefTNF.MIME_MEDIA:
             raw_mime_type = self.record_type.decode("ascii")
             return _normalize_mime_type(raw_mime_type)
         return None
 
-    def to_uri(self) -> str | None:
+    def to_uri(self) -> Optional[str]:
         return self._to_uri(False)
 
-    def _to_uri(self, in_smart_poster: bool) -> str | None:
+    def _to_uri(self, in_smart_poster: bool) -> Optional[str]:
         if self.tnf == NdefTNF.WELL_KNOWN:
-            if self.record_type == NdefRTD.SMART_POSTER.value and not in_smart_poster:
+            if self.record_type == NdefRTD.SMART_POSTER and not in_smart_poster:
                 for record in NdefMessage.parse(self.payload).records:
                     uri = record._to_uri(True)
                     if uri is not None:
                         return _normalize_uri_scheme(uri)
-            elif self.record_type == NdefRTD.URI.value:
+            elif self.record_type == NdefRTD.URI:
                 if len(self.payload) >= 2:
-                    prefix_index = self.payload[0] & 0xff
+                    prefix_index = self.payload[0]
                     if 0 <= prefix_index < len(_URI_PREFIX_MAP):
                         return _URI_PREFIX_MAP[prefix_index] + self.payload[1:].decode("utf-8")
         elif self.tnf == NdefTNF.ABSOLUTE_URI:
@@ -332,12 +333,12 @@ class NdefRecord:
                (self._FLAG_IL if self._flag_il else 0) | self.tnf.value
 
         buffer.append(flag)
-        buffer.append(len(self.record_type) & 0xff)
+        buffer.append(len(self.record_type))
 
         if self._flag_sr:
-            buffer.append(len(self.payload) & 0xff)
+            buffer.append(len(self.payload))
         else:
-            buffer.extend(struct.pack(">I", len(self.payload)))
+            buffer.extend(len(self.payload).to_bytes(length=4, byteorder="big", signed=False))
         if self._flag_il:
             buffer.append(len(self.record_id))
 
