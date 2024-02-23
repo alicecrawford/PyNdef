@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "versioningit"]
 build-backend = "hatchling.build"
 
 [project]
+dynamic = ["version"]
 name = "pyndef"
-version = "1.0.0"
 requires-python = ">=3.6"
 authors = [
     { name = "XFY9326" }
@@ -14,14 +14,19 @@ maintainers = [
 ]
 description = "Pure Python library for creating and parsing NDEF messages."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
 keywords = ["nfc", "ndef", "ndef-library"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Typing :: Typed"
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10"
 ]
 
 [project.urls]
@@ -36,4 +41,4 @@ pythonpath = "src"
 exclude = [".github/"]
 
 [tool.hatch.version]
-path = "src/pyndef/__about__.py"
+source = "versioningit"
