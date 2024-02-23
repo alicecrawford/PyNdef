@@ -2,7 +2,7 @@
 
 ![!python-versions](https://img.shields.io/badge/Python-3.6%20%7C%203.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
 [![codecov](https://codecov.io/gh/XFY9326/PyNdef/graph/badge.svg?token=QVJNICD0GA)](https://codecov.io/gh/XFY9326/PyNdef)
-[![Python compatibility test](https://github.com/XFY9326/PyNdef/actions/workflows/python_compatibility_test.yml/badge.svg?branch=master)](https://github.com/XFY9326/PyNdef/actions/workflows/python_compatibility_test.yml)
+[![Test](https://github.com/XFY9326/PyNdef/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/XFY9326/PyNdef/actions/workflows/test.yml)
 
 Pure Python library for creating and parsing NDEF messages.  
 All codes in this repository are referred to AOSP NDEF implementation.

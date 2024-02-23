@@ -14,6 +14,7 @@ maintainers = [
 ]
 description = "Pure Python library for creating and parsing NDEF messages."
 readme = "README.md"
+license = { file = "LICENSE" }
 keywords = ["nfc", "ndef", "ndef-library"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
