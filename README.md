@@ -20,6 +20,10 @@ All codes in this repository are referred to AOSP NDEF implementation.
 
 ## Usage
 
+```shell
+pip install pyndef
+```
+
 ```python
 from pyndef import NdefMessage, NdefRecord, NdefTNF, NdefRTD
 
