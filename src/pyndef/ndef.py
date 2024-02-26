@@ -400,10 +400,10 @@ class NdefMessage:
     def __init__(self, *records: NdefRecord) -> None:
         if len(records) == 0:
             raise ValueError("must have at least one record")
-        self._records: tuple[NdefRecord, ...] = records
+        self._records: Tuple[NdefRecord, ...] = records
 
     @property
-    def records(self) -> tuple[NdefRecord, ...]:
+    def records(self) -> Tuple[NdefRecord, ...]:
         return self._records
 
     @staticmethod
