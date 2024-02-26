@@ -4,6 +4,7 @@ from pyndef import NdefRecord, NdefMessage, NdefTNF, NdefRTD
 
 
 # /cts/tests/tests/ndef/src/android/ndef/cts/NdefTest.java
+# noinspection HttpUrlsUsage
 class NdefTestCase(unittest.TestCase):
     _PAYLOAD_255 = b"\x01\x02\x03\x04\x05\x06\x07\x08\x01\x02\x03\x04\x05\x06\x07\x08\x01\x02\x03\x04\x05\x06\x07\x08\x01\x02\x03\x04\x05\x06\x07\x08" + \
                    b"\x01\x02\x03\x04\x05\x06\x07\x08\x01\x02\x03\x04\x05\x06\x07\x08\x01\x02\x03\x04\x05\x06\x07\x08\x01\x02\x03\x04\x05\x06\x07\x08" + \
@@ -273,15 +274,24 @@ class NdefTestCase(unittest.TestCase):
         # 256 byte payload
         self.assertEqual(b"\xc5\x00\x00\x00\x01\x00" + self._PAYLOAD_256, NdefMessage(NdefRecord(NdefTNF.UNKNOWN, None, None, self._PAYLOAD_256)).to_bytes())
 
+        self.assertEqual(
+            b"\xd8\x00\x00\x00",
+            bytes(NdefRecord(NdefTNF.EMPTY, None, None, None))
+        )
+        self.assertEqual(
+            b"\xd8\x00\x00\x00",
+            bytes(NdefMessage(NdefRecord(NdefTNF.EMPTY, None, None, None)))
+        )
+
     def test_get_bytes_length(self) -> None:
         # single short record
         r = NdefRecord(NdefTNF.EMPTY, None, None, None)
         b = b"\xd8\x00\x00\x00"
-        self.assertEqual(len(b), len(NdefMessage(r)))
+        self.assertEqual(len(b), NdefMessage(r).bytes_size())
         # 3 records
         r = NdefRecord(NdefTNF.EMPTY, None, None, None)
         b = b"\x98\x00\x00\x00\x18\x00\x00\x00\x58\x00\x00\x00"
-        self.assertEqual(len(b), len(NdefMessage(r, r, r)))
+        self.assertEqual(len(b), NdefMessage(r, r, r).bytes_size())
 
     def test_to_uri(self) -> None:
         # absolute uri
@@ -354,12 +364,12 @@ class NdefTestCase(unittest.TestCase):
         self.assertEqual(f"NdefMessage({p1})", repr(NdefMessage(r1)))
         self.assertEqual(f"NdefMessage({p1}, {p2})", repr(NdefMessage(r1, r2)))
 
-    def test_len(self) -> None:
+    def test_iter_message(self) -> None:
         r1 = NdefRecord(NdefTNF.EMPTY, None, None, None)
         r2 = NdefRecord(NdefTNF.EXTERNAL_TYPE, b"type", b"\x01", self._PAYLOAD_256)
-        self.assertEqual(4, len(r1))
-        self.assertEqual(268, len(r2))
-        self.assertEqual(4 + 268, len(NdefMessage(r1, r2)))
+        self.assertEqual(1, len(list(NdefMessage(r1))))
+        self.assertEqual(2, len(list(NdefMessage(r1, r2))))
+        self.assertEqual(NdefMessage(r1, r2).records, tuple(iter(NdefMessage(r1, r2))))
 
 
 if __name__ == "__main__":
