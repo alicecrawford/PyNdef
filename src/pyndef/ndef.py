@@ -1,11 +1,7 @@
-import enum
 import io
-from typing import List, Tuple, Optional, Union, Iterator
-from urllib.parse import urlparse
 
 
-@enum.unique
-class NdefTNF(int, enum.Enum):
+class NdefTNF:
     EMPTY = 0x00
     WELL_KNOWN = 0x01
     MIME_MEDIA = 0x02
@@ -16,8 +12,7 @@ class NdefTNF(int, enum.Enum):
     RESERVED = 0x07
 
 
-@enum.unique
-class NdefRTD(bytes, enum.Enum):
+class NdefRTD:
     TEXT = b"T"
     URI = b"U"
     SMART_POSTER = b"Sp"
@@ -29,7 +24,7 @@ class NdefRTD(bytes, enum.Enum):
 
 
 # noinspection SpellCheckingInspection
-_URI_PREFIX_MAP: Tuple[str, ...] = (
+_URI_PREFIX_MAP = (
     "",  # 0x00
     "http://www.",  # 0x01
     "https://www.",  # 0x02
@@ -77,13 +72,11 @@ def _normalize_mime_type(raw_mime_type: str) -> str:
 
 
 def _normalize_uri_scheme(raw_uri: str) -> str:
-    parsed_uri = urlparse(raw_uri)
-    parsed_uri = parsed_uri._replace(scheme=parsed_uri.scheme.lower())
-    return parsed_uri.geturl()
+    return raw_uri
 
 
 class _BytesBuffer(io.BytesIO):
-    def __init__(self, buffer: Optional[bytes] = None, byte_order: str = "big") -> None:
+    def __init__(self, buffer=None, byte_order: str = "big") -> None:
         super().__init__(buffer)
         self._byte_order: str = byte_order
 
@@ -98,7 +91,7 @@ class _BytesBuffer(io.BytesIO):
         if 0 < size != len(buffer):
             raise IndexError("buffer is too short")
         # noinspection PyTypeChecker
-        return int.from_bytes(bytes=buffer, byteorder=self._byte_order, signed=signed)
+        return int.from_bytes(buffer, self._byte_order, signed=signed)
 
     def read_bytes(self, size: int) -> bytes:
         buffer = self.read(size)
@@ -127,16 +120,20 @@ class NdefRecord:
 
     _MAX_PAYLOAD_SIZE: int = 10 * (1 << 20)
 
-    def __init__(self, tnf: NdefTNF, record_type: Union[NdefRTD, bytes, None], record_id: Optional[bytes], payload: Optional[bytes]) -> None:
-        self._tnf: NdefTNF = tnf
-        self._record_type: bytes = bytes(record_type) if record_type is not None else bytes()
-        self._record_id: bytes = bytes(record_id) if record_id is not None else bytes()
-        self._payload: bytes = bytes(payload) if payload is not None else bytes()
+    def __init__(self, tnf, record_type, record_id, payload) -> None:
+        self._tnf = tnf
+        self._record_type: bytes = bytes(
+            record_type) if record_type is not None else bytes()
+        self._record_id: bytes = bytes(
+            record_id) if record_id is not None else bytes()
+        self._payload: bytes = bytes(
+            payload) if payload is not None else bytes()
 
-        self._validate_tnf(tnf, self._record_type, self._record_id, self._payload)
+        self._validate_tnf(tnf, self._record_type,
+                           self._record_id, self._payload)
 
     @property
-    def tnf(self) -> NdefTNF:
+    def tnf(self):
         return self._tnf
 
     @property
@@ -151,9 +148,9 @@ class NdefRecord:
     def payload(self) -> bytes:
         return self._payload
 
-    def to_known_rtd(self) -> Optional[NdefRTD]:
+    def to_known_rtd(self):
         try:
-            return NdefRTD(self._record_type)
+            return self._record_type
         except ValueError:
             return None
 
@@ -177,7 +174,7 @@ class NdefRecord:
         return NdefRecord(NdefTNF.WELL_KNOWN, NdefRTD.URI, None, bytes(record))
 
     @staticmethod
-    def create_mime(mime_type: str, mime_data: Optional[bytes]) -> 'NdefRecord':
+    def create_mime(mime_type: str, mime_data) -> 'NdefRecord':
         mime_type = _normalize_mime_type(mime_type)
 
         if len(mime_type) == 0:
@@ -191,7 +188,7 @@ class NdefRecord:
         return NdefRecord(NdefTNF.MIME_MEDIA, mime_type.encode("ascii"), None, mime_data)
 
     @staticmethod
-    def create_external(domain: str, external_type: str, data: Optional[bytes]) -> 'NdefRecord':
+    def create_external(domain: str, external_type: str, data) -> 'NdefRecord':
         domain = domain.strip().lower()
         external_type = external_type.strip().lower()
 
@@ -200,7 +197,8 @@ class NdefRecord:
         if len(external_type) == 0:
             raise ValueError("type is empty")
 
-        record_type = domain.encode("utf-8") + b':' + external_type.encode("utf-8")
+        record_type = domain.encode(
+            "utf-8") + b':' + external_type.encode("utf-8")
         return NdefRecord(NdefTNF.EXTERNAL_TYPE, record_type, None, data)
 
     @staticmethod
@@ -214,25 +212,27 @@ class NdefRecord:
         if len(language_code_bytes) >= 64:
             raise ValueError("language code is too long, must be <64 bytes.")
 
-        status_bytes = len(language_code_bytes).to_bytes(length=1, byteorder="big", signed=False)
+        status_bytes = len(language_code_bytes).to_bytes(
+            length=1, byteorder="big", signed=False)
         buffer = status_bytes + language_code_bytes + text_bytes
         return NdefRecord(NdefTNF.WELL_KNOWN, NdefRTD.TEXT, None, buffer)
 
     @staticmethod
-    def parse(buffer: bytes, ignore_mb_me: bool = True) -> Tuple['NdefRecord', ...]:
+    def parse(buffer: bytes, ignore_mb_me: bool = True):
         def _ensure_sane_payload_size(size: int) -> None:
             if size > NdefRecord._MAX_PAYLOAD_SIZE:
-                raise ValueError(f"payload above max limit: {size} > {NdefRecord._MAX_PAYLOAD_SIZE}")
+                raise ValueError(f"payload above max limit: {size} > {
+                                 NdefRecord._MAX_PAYLOAD_SIZE}")
 
-        records: List['NdefRecord'] = []
+        records = []
 
-        record_type: Optional[bytes] = None
-        record_id: Optional[bytes] = None
+        record_type = None
+        record_id = None
 
         bytes_buffer = _BytesBuffer(buffer)
-        chunks: List[bytes] = []
+        chunks = []
         in_chunk: bool = False
-        chunk_tnf: Optional[NdefTNF] = None
+        chunk_tnf = None
         me: bool = False
 
         try:
@@ -244,7 +244,7 @@ class NdefRecord:
                 cf = flag & NdefRecord._FLAG_CF != 0
                 sr = flag & NdefRecord._FLAG_SR != 0
                 il = flag & NdefRecord._FLAG_IL != 0
-                tnf = NdefTNF(flag & 0x07)
+                tnf = flag & 0x07
 
                 if not mb and len(records) == 0 and not in_chunk and not ignore_mb_me:
                     raise ValueError("expected MB flag")
@@ -253,18 +253,22 @@ class NdefRecord:
                 elif in_chunk and il:
                     raise ValueError("unexpected IL flag in non-leading chunk")
                 elif cf and me:
-                    raise ValueError("unexpected ME flag in non-trailing chunk")
+                    raise ValueError(
+                        "unexpected ME flag in non-trailing chunk")
                 elif in_chunk and tnf != NdefTNF.UNCHANGED:
-                    raise ValueError("expected TNF_UNCHANGED in non-leading chunk")
+                    raise ValueError(
+                        "expected TNF_UNCHANGED in non-leading chunk")
                 elif not in_chunk and tnf == NdefTNF.UNCHANGED:
-                    raise ValueError("unexpected TNF_UNCHANGED in first chunk or not chunked record")
+                    raise ValueError(
+                        "unexpected TNF_UNCHANGED in first chunk or not chunked record")
 
                 type_length = bytes_buffer.read_uint8()
                 payload_length = bytes_buffer.read_uint8() if sr else bytes_buffer.read_uint32()
                 id_length = bytes_buffer.read_uint8() if il else 0
 
                 if in_chunk and type_length != 0:
-                    raise ValueError("expected zero-length type in non-leading chunk")
+                    raise ValueError(
+                        "expected zero-length type in non-leading chunk")
 
                 if not in_chunk:
                     record_type = bytes_buffer.read_bytes(type_length)
@@ -275,7 +279,8 @@ class NdefRecord:
 
                 if cf and not in_chunk:
                     if type_length == 0 and tnf != NdefTNF.UNKNOWN:
-                        raise ValueError("expected non-zero type length in first chunk")
+                        raise ValueError(
+                            "expected non-zero type length in first chunk")
                     chunks.clear()
                     chunk_tnf = tnf
 
@@ -295,7 +300,8 @@ class NdefRecord:
                     in_chunk = False
 
                 NdefRecord._validate_tnf(tnf, record_type, record_id, payload)
-                records.append(NdefRecord(tnf, record_type, record_id, payload))
+                records.append(NdefRecord(
+                    tnf, record_type, record_id, payload))
 
                 if ignore_mb_me:
                     break
@@ -315,7 +321,7 @@ class NdefRecord:
     def _flag_il(self) -> bool:
         return True if self._tnf == NdefTNF.EMPTY else len(self._record_id) > 0
 
-    def to_mime_type(self) -> Optional[str]:
+    def to_mime_type(self):
         if self._tnf == NdefTNF.WELL_KNOWN:
             if self._record_type == NdefRTD.TEXT:
                 return "text/plain"
@@ -324,10 +330,10 @@ class NdefRecord:
             return _normalize_mime_type(raw_mime_type)
         return None
 
-    def to_uri(self) -> Optional[str]:
+    def to_uri(self):
         return self._to_uri(False)
 
-    def _to_uri(self, in_smart_poster: bool) -> Optional[str]:
+    def _to_uri(self, in_smart_poster: bool):
         if self._tnf == NdefTNF.WELL_KNOWN:
             if self._record_type == NdefRTD.SMART_POSTER and not in_smart_poster:
                 for record in NdefMessage.parse(self._payload):
@@ -352,7 +358,7 @@ class NdefRecord:
         flag = (self._FLAG_MB if flag_mb else 0) | \
                (self._FLAG_ME if flag_me else 0) | \
                (self._FLAG_SR if self._flag_sr else 0) | \
-               (self._FLAG_IL if self._flag_il else 0) | self._tnf.value
+               (self._FLAG_IL if self._flag_il else 0) | self._tnf
 
         buffer.write_uint8(flag)
         buffer.write_uint8(len(self._record_type))
@@ -371,18 +377,21 @@ class NdefRecord:
         return buffer.getvalue()
 
     @staticmethod
-    def _validate_tnf(tnf: NdefTNF, record_type: bytes, record_id: bytes, payload: bytes) -> None:
+    def _validate_tnf(tnf, record_type: bytes, record_id: bytes, payload: bytes) -> None:
         if tnf == NdefTNF.EMPTY:
             if len(record_type) != 0 or len(record_id) != 0 or len(payload) != 0:
                 raise ValueError("unexpected data in TNF_EMPTY record")
         elif tnf == NdefTNF.UNKNOWN or tnf == NdefTNF.RESERVED:
             if len(record_type) != 0:
-                raise ValueError("unexpected type field in TNF_UNKNOWN or TNF_RESERVED record")
+                raise ValueError(
+                    "unexpected type field in TNF_UNKNOWN or TNF_RESERVED record")
         elif tnf == NdefTNF.UNCHANGED:
-            raise ValueError("unexpected TNF_UNCHANGED in first chunk or logical record")
+            raise ValueError(
+                "unexpected TNF_UNCHANGED in first chunk or logical record")
 
     def bytes_size(self) -> int:
-        length = 3 + len(self._record_type) + len(self._record_id) + len(self._payload)
+        length = 3 + len(self._record_type) + \
+            len(self._record_id) + len(self._payload)
         if not self._flag_sr:
             length += 3
         if self._flag_il:
@@ -393,11 +402,12 @@ class NdefRecord:
         return self.to_bytes()
 
     def __repr__(self) -> str:
-        return ("NdefRecord("
-                f"tnf=0x{self._tnf.value:02x}, "
-                f"type={self._record_type}, "
-                f"id={self._record_id}, "
-                f"payload={self._payload})")
+        s = "NdefRecord("
+        s += f"tnf=0x{self._tnf:02x}, "
+        s += f"type={self._record_type}, "
+        s += f"id={self._record_id}, "
+        s += f"payload={self._payload})"
+        return s
 
     def __eq__(self, __value) -> bool:
         if __value is None or not isinstance(__value, NdefRecord):
@@ -409,7 +419,7 @@ class NdefRecord:
                 self._payload == __value._payload
 
     def __hash__(self) -> int:
-        return hash((self._tnf.value, self._record_type, self._record_id, self._payload))
+        return hash((self._tnf, self._record_type, self._record_id, self._payload))
 
 
 # /platform/frameworks/base/nfc/java/android/nfc/NdefMessage.java
@@ -417,10 +427,10 @@ class NdefMessage:
     def __init__(self, *records: NdefRecord) -> None:
         if len(records) == 0:
             raise ValueError("must have at least one record")
-        self._records: Tuple[NdefRecord, ...] = records
+        self._records = records
 
     @property
-    def records(self) -> Tuple[NdefRecord, ...]:
+    def records(self):
         return self._records
 
     @staticmethod
@@ -442,7 +452,7 @@ class NdefMessage:
     def __bytes__(self) -> bytes:
         return self.to_bytes()
 
-    def __iter__(self) -> Iterator[NdefRecord]:
+    def __iter__(self):
         return iter(self._records)
 
     def __len__(self) -> int:
